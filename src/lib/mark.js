@@ -369,12 +369,13 @@ class Mark {
    * after the wrapped text node
    * @access protected
    */
-  wrapRangeInTextNode(node, start, end) {
+  wrapRangeInTextNode(node, start, end, index) {
     const hEl = !this.opt.element ? 'mark' : this.opt.element,
       startNode = node.splitText(start),
       ret = startNode.splitText(end - start);
     let repl = document.createElement(hEl);
     repl.setAttribute('data-markjs', 'true');
+    repl.setAttribute('data-index', index);
     if (this.opt.className) {
       repl.setAttribute('class', this.opt.className);
     }
@@ -418,7 +419,7 @@ class Mark {
    * @param  {Mark~wrapMatchesEachCallback} eachCb - Each callback
    * @access protected
    */
-  wrapRangeInMappedTextNode(dict, start, end, filterCb, eachCb) {
+  wrapRangeInMappedTextNode(dict, start, end, filterCb, eachCb, index) {
     // iterate over all text nodes to find the one matching the positions
     dict.nodes.every((n, i) => {
       const sibl = dict.nodes[i + 1];
@@ -431,7 +432,7 @@ class Mark {
           e = (end > n.end ? n.end : end) - n.start,
           startStr = dict.value.substr(0, n.start),
           endStr = dict.value.substr(e + n.start);
-        n.node = this.wrapRangeInTextNode(n.node, s, e);
+        n.node = this.wrapRangeInTextNode(n.node, s, e, index);
         // recalculate positions to also find subsequent matches in the
         // same text node. Necessary as the text node in dict now only
         // contains the splitted part after the wrapped one
@@ -463,7 +464,7 @@ class Mark {
   * @param {Mark~wrapMatchesEachCallback} eachCb
   */
   wrapGroups(node, pos, len, eachCb) {
-    node = this.wrapRangeInTextNode(node, pos, pos + len);
+    node = this.wrapRangeInTextNode(node, pos, pos + len, null);
     eachCb(node.previousSibling);
     return node;
   }
@@ -584,6 +585,7 @@ class Mark {
     const matchIdx = ignoreGroups === 0 ? 0 : ignoreGroups + 1;
     this.getTextNodes(dict => {
       let match;
+      let index = 0;
       while (
         (match = regex.exec(dict.value)) !== null &&
         match[matchIdx] !== ''
@@ -604,7 +606,8 @@ class Mark {
         }, (node, lastIndex) => {
           regex.lastIndex = lastIndex;
           eachCb(node);
-        });
+        }, index);
+        index++
       }
       endCb();
     });
@@ -658,7 +661,7 @@ class Mark {
             );
           }, node => {
             eachCb(node, range);
-          });
+          }, null);
         }
       });
       endCb();
